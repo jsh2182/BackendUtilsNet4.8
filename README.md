@@ -87,35 +87,81 @@ BackendUtilsNet4.8.sln
 
 ## 🧪 Usage Examples
 
-### Asterisk Integration
+### 1️⃣ Asterisk Integration
 
 ```csharp
 var asteriskClient = new AsteriskClient("host", 5038, "user", "password");
 asteriskClient.Connect();
 asteriskClient.SendCommand("Originate ...");
+asteriskClient.OnEventReceived += (sender, e) => {
+    Console.WriteLine($"Event: {e.EventName}");
+};
 ```
 
-### Push Notifications
+### 2️⃣ Push Notifications
 
 ```csharp
 var pushService = new PushNotificationService();
 pushService.SendNotification(userId, "New message received");
 ```
 
-### EF Bulk Insert
+### 3️⃣ Server-Sent Events (SSE)
+
+#### Backend (.NET Framework 4.8 Web API)
+
+```csharp
+[HttpGet]
+[Route("api/sse/notifications")]
+public HttpResponseMessage GetNotifications()
+{
+    var response = Request.CreateResponse();
+    response.Headers.Add("Content-Type", "text/event-stream");
+
+    var stream = new PushStreamContent(async (outputStream, httpContent, transportContext) =>
+    {
+        using (var writer = new StreamWriter(outputStream))
+        {
+            while (true)
+            {
+                var data = $"data: Server time is {DateTime.Now}\n\n";
+                await writer.WriteAsync(data);
+                await writer.FlushAsync();
+
+                await Task.Delay(TimeSpan.FromSeconds(5));
+            }
+        }
+    });
+
+    response.Content = stream;
+    return response;
+}
+```
+
+#### Client (HTML + JavaScript)
+
+```html
+<script>
+    const evtSource = new EventSource("/api/sse/notifications");
+
+    evtSource.onmessage = function(event) {
+        console.log("SSE message:", event.data);
+    };
+
+    evtSource.onerror = function(err) {
+        console.error("SSE error:", err);
+    };
+</script>
+```
+
+---
+
+### 4️⃣ EF Bulk Insert
 
 ```csharp
 using (var context = new MyDbContext())
 {
     context.BulkInsert(entitiesList);
 }
-```
-
-### Server-Sent Events (SSE)
-
-```csharp
-var sse = new SseHandler();
-sse.SendEvent("update", "Data updated");
 ```
 
 ---
